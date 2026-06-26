@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baird Economic Data Charts</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f5f6f8;
+    color: #1a1a2e;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #1e2d6b;
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+
+  header img {
+    height: 44px;
+    width: auto;
+  }
+
+  header h1 {
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 32px auto;
+    padding: 0 20px;
+  }
+
+  .search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .search-bar input {
+    flex: 1;
+    padding: 11px 16px;
+    border: 1.5px solid #d0d5e8;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 0.97rem;
+    background: #fff;
+    color: #1a1a2e;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-bar input:focus { border-color: #1e2d6b; }
+
+  .search-bar input::placeholder { color: #9098b0; }
+
+  button {
+    padding: 11px 22px;
+    background: #1e2d6b;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s;
+    white-space: nowrap;
+  }
+
+  button:hover { background: #162155; }
+  button:disabled { background: #8e9ac2; cursor: not-allowed; }
+
+  button.secondary {
+    background: #fff;
+    color: #1e2d6b;
+    border: 1.5px solid #1e2d6b;
+  }
+
+  button.secondary:hover { background: #eef0f8; }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: flex-end;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .control-group label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #5a6380;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  select {
+    padding: 9px 32px 9px 12px;
+    border: 1.5px solid #d0d5e8;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 0.93rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%231e2d6b' d='M6 8L0 0h12z'/%3E%3C/svg%3E") no-repeat right 12px center;
+    background-size: 10px;
+    color: #1a1a2e;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 160px;
+  }
+
+  select:focus { border-color: #1e2d6b; }
+
+  .date-inputs {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .chart-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 16px rgba(30,45,107,0.08);
+    padding: 28px 28px 20px;
+    position: relative;
+  }
+
+  .chart-header {
+    margin-bottom: 18px;
+  }
+
+  .chart-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .chart-subtitle {
+    font-size: 0.82rem;
+    color: #6b7494;
+  }
+
+  .chart-meta {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    font-size: 0.78rem;
+    color: #8e9ac2;
+  }
+
+  .meta-item strong {
+    color: #1e2d6b;
+    font-weight: 700;
+  }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 400px;
+  }
+
+  .chart-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    justify-content: flex-end;
+  }
+
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    font-size: 0.95rem;
+    color: #8e9ac2;
+    gap: 12px;
+  }
+
+  .spinner {
+    width: 22px; height: 22px;
+    border: 3px solid #d0d5e8;
+    border-top-color: #1e2d6b;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #c0392b;
+    font-size: 0.93rem;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 360px;
+    color: #b0b8d4;
+    gap: 14px;
+    text-align: center;
+  }
+
+  .empty-state svg { opacity: 0.35; }
+  .empty-state p { font-size: 0.95rem; max-width: 320px; line-height: 1.5; }
+
+  .last-value-bar {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 10px 0 4px;
+  }
+
+  .last-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1e2d6b;
+  }
+
+  .last-value-unit {
+    font-size: 0.85rem;
+    color: #6b7494;
+  }
+
+  .source-note {
+    font-size: 0.72rem;
+    color: #b0b8d4;
+    margin-top: 14px;
+    border-top: 1px solid #f0f2f8;
+    padding-top: 10px;
+  }
+
+  @media (max-width: 700px) {
+    header { padding: 12px 16px; }
+    header h1 { font-size: 0.95rem; }
+    .container { padding: 0 12px; margin: 16px auto; }
+    .controls { gap: 8px; }
+    select { min-width: 130px; }
+    .chart-card { padding: 16px 14px 14px; }
+    .chart-wrap { height: 260px; }
+    .last-value { font-size: 1.5rem; }
+  }
+
+  .suggestion-box {
+    background: #fff;
+    border: 1.5px solid #d0d5e8;
+    border-radius: 6px;
+    margin-top: -18px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(30,45,107,0.10);
+    overflow: hidden;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .suggestion-item {
+    padding: 9px 16px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    border-bottom: 1px solid #f0f2f8;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover { background: #eef0f8; }
+  .suggestion-item .sid { font-size: 0.72rem; color: #8e9ac2; font-weight: 700; }
+
+  .popular-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .chip {
+    padding: 5px 13px;
+    background: #eef0f8;
+    border: 1px solid #d0d5e8;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #1e2d6b;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .chip:hover { background: #1e2d6b; color: #fff; border-color: #1e2d6b; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="baird-logo.png" alt="Baird" id="headerLogo">
+  <h1>Economic Data Charts</h1>
+</header>
+
+<div class="container">
+
+  <div class="search-bar">
+    <input type="text" id="seriesInput" placeholder="Search FRED series (e.g. GDP, UNRATE, CPIAUCSL, FEDFUNDS…)" autocomplete="off">
+    <button onclick="loadSeries()" id="loadBtn">Load Chart</button>
+  </div>
+
+  <div id="suggestions" class="suggestion-box" style="display:none;"></div>
+
+  <div class="popular-chips">
+    <span class="chip" onclick="quickLoad('UNRATE')">Unemployment</span>
+    <span class="chip" onclick="quickLoad('CPIAUCSL')">CPI</span>
+    <span class="chip" onclick="quickLoad('FEDFUNDS')">Fed Funds Rate</span>
+    <span class="chip" onclick="quickLoad('GDP')">GDP</span>
+    <span class="chip" onclick="quickLoad('T10Y2Y')">10Y-2Y Spread</span>
+    <span class="chip" onclick="quickLoad('CORESTICKM159SFRBATL')">Core Sticky CPI</span>
+    <span class="chip" onclick="quickLoad('MORTGAGE30US')">30Y Mortgage Rate</span>
+  </div>
+
+  <div class="controls" id="controls" style="display:none;">
+    <div class="control-group">
+      <label>Units</label>
+      <select id="unitsSelect" onchange="updateChart()"></select>
+    </div>
+    <div class="control-group">
+      <label>Frequency</label>
+      <select id="freqSelect" onchange="updateChart()"></select>
+    </div>
+    <div class="control-group">
+      <label>Start Date</label>
+      <input type="date" id="startDate" style="padding:9px 12px;border:1.5px solid #d0d5e8;border-radius:6px;font-family:Arial,sans-serif;font-size:0.93rem;color:#1a1a2e;outline:none;" onchange="updateChart()">
+    </div>
+    <div class="control-group">
+      <label>End Date</label>
+      <input type="date" id="endDate" style="padding:9px 12px;border:1.5px solid #d0d5e8;border-radius:6px;font-family:Arial,sans-serif;font-size:0.93rem;color:#1a1a2e;outline:none;" onchange="updateChart()">
+    </div>
+  </div>
+
+  <div class="chart-card" id="chartCard">
+    <div class="empty-state" id="emptyState">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="44" width="8" height="16" rx="2" fill="#1e2d6b"/>
+        <rect x="16" y="30" width="8" height="30" rx="2" fill="#1e2d6b"/>
+        <rect x="28" y="36" width="8" height="24" rx="2" fill="#1e2d6b"/>
+        <rect x="40" y="18" width="8" height="42" rx="2" fill="#1e2d6b"/>
+        <rect x="52" y="10" width="8" height="50" rx="2" fill="#1e2d6b"/>
+      </svg>
+      <p>Search for a FRED series above or click a quick-load chip to get started.</p>
+    </div>
+
+    <div id="loadingState" class="loading" style="display:none;">
+      <div class="spinner"></div> Loading data…
+    </div>
+
+    <div id="errorState" class="error-msg" style="display:none;"></div>
+
+    <div id="chartContent" style="display:none;">
+      <div class="chart-header">
+        <div class="chart-title" id="chartTitle"></div>
+        <div class="last-value-bar">
+          <span class="last-value" id="lastValue"></span>
+          <span class="last-value-unit" id="lastValueLabel"></span>
+        </div>
+        <div class="chart-meta">
+          <div class="meta-item">Units: <strong id="metaUnits"></strong></div>
+          <div class="meta-item">Frequency: <strong id="metaFreq"></strong></div>
+          <div class="meta-item">Source: <strong id="metaSource">FRED, Federal Reserve Bank of St. Louis</strong></div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="myChart"></canvas>
+      </div>
+      <div class="chart-actions">
+        <button class="secondary" onclick="exportPDF()">Export PDF</button>
+        <button class="secondary" onclick="exportPNG()">Export PNG</button>
+      </div>
+      <div class="source-note" id="sourceNote"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API_KEY = '5794f69cc123ce918f4204b34762e241';
+const FRED_BASE = 'https://api.stlouisfed.org/fred';
+
+let currentSeries = null;
+let currentSeriesInfo = null;
+let chartInstance = null;
+let logoDataUrl = null;
+let allObservations = [];
+let searchTimeout = null;
+
+// Pre-load logo as data URL for PDF
+const logoImg = new Image();
+logoImg.crossOrigin = 'anonymous';
+logoImg.onload = function() {
+  const c = document.createElement('canvas');
+  c.width = logoImg.naturalWidth;
+  c.height = logoImg.naturalHeight;
+  c.getContext('2d').drawImage(logoImg, 0, 0);
+  logoDataUrl = c.toDataURL('image/png');
+};
+logoImg.src = 'baird-logo.png';
+
+// Search suggestions
+document.getElementById('seriesInput').addEventListener('input', function() {
+  clearTimeout(searchTimeout);
+  const q = this.value.trim();
+  if (q.length < 2) { hideSuggestions(); return; }
+  searchTimeout = setTimeout(() => searchSeries(q), 350);
+});
+
+document.getElementById('seriesInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { hideSuggestions(); loadSeries(); }
+  if (e.key === 'Escape') hideSuggestions();
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.search-bar') && !e.target.closest('.suggestion-box')) {
+    hideSuggestions();
+  }
+});
+
+async function searchSeries(query) {
+  try {
+    const url = `${FRED_BASE}/series/search?search_text=${encodeURIComponent(query)}&api_key=${API_KEY}&file_type=json&limit=6&order_by=popularity&sort_order=desc`;
+    const r = await fetch(url);
+    const d = await r.json();
+    if (!d.seriess || d.seriess.length === 0) { hideSuggestions(); return; }
+    showSuggestions(d.seriess);
+  } catch(e) { hideSuggestions(); }
+}
+
+function showSuggestions(series) {
+  const box = document.getElementById('suggestions');
+  box.innerHTML = series.map(s => `
+    <div class="suggestion-item" onclick="selectSeries('${s.id}','${escHtml(s.title)}')">
+      <span>${escHtml(s.title)}</span>
+      <span class="sid">${s.id} &nbsp;·&nbsp; ${s.frequency_short || s.frequency} &nbsp;·&nbsp; ${s.units_short || s.units}</span>
+    </div>
+  `).join('');
+  box.style.display = 'block';
+}
+
+function hideSuggestions() {
+  document.getElementById('suggestions').style.display = 'none';
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function selectSeries(id, title) {
+  document.getElementById('seriesInput').value = id;
+  hideSuggestions();
+  loadSeries(id);
+}
+
+function quickLoad(id) {
+  document.getElementById('seriesInput').value = id;
+  loadSeries(id);
+}
+
+async function loadSeries(overrideId) {
+  const id = (overrideId || document.getElementById('seriesInput').value).trim().toUpperCase();
+  if (!id) return;
+  currentSeries = id;
+
+  showState('loading');
+
+  try {
+    // Fetch series info
+    const infoUrl = `${FRED_BASE}/series?series_id=${id}&api_key=${API_KEY}&file_type=json`;
+    const infoRes = await fetch(infoUrl);
+    const infoData = await infoRes.json();
+    if (!infoData.seriess || infoData.seriess.length === 0) {
+      showState('error', `Series "${id}" not found. Please check the ID and try again.`);
+      return;
+    }
+    currentSeriesInfo = infoData.seriess[0];
+    setupControls(currentSeriesInfo);
+
+    await fetchAndRender();
+  } catch(e) {
+    showState('error', 'Failed to load data. Please check your connection and try again.');
+    console.error(e);
+  }
+}
+
+function setupControls(info) {
+  // Units options
+  const unitsSelect = document.getElementById('unitsSelect');
+  const unitsOptions = [
+    { value: 'lin', label: 'Level' },
+    { value: 'chg', label: 'Change' },
+    { value: 'ch1', label: 'Change from Year Ago' },
+    { value: 'pch', label: '% Change' },
+    { value: 'pc1', label: '% Change from Year Ago' },
+    { value: 'pca', label: 'Compounded Annual Rate of Change' },
+    { value: 'cch', label: 'Continuously Compounded Rate of Change' },
+    { value: 'cca', label: 'Continuously Compounded Annual Rate' },
+    { value: 'log', label: 'Natural Log' },
+  ];
+  unitsSelect.innerHTML = unitsOptions.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  unitsSelect.value = 'lin';
+
+  // Frequency options based on series frequency
+  const freqSelect = document.getElementById('freqSelect');
+  const freqMap = {
+    'Daily': [
+      { value: 'd', label: 'Daily' },
+      { value: 'w', label: 'Weekly' },
+      { value: 'm', label: 'Monthly' },
+      { value: 'q', label: 'Quarterly' },
+      { value: 'a', label: 'Annual' },
+    ],
+    'Weekly': [
+      { value: 'w', label: 'Weekly' },
+      { value: 'm', label: 'Monthly' },
+      { value: 'q', label: 'Quarterly' },
+      { value: 'a', label: 'Annual' },
+    ],
+    'Monthly': [
+      { value: 'm', label: 'Monthly' },
+      { value: 'q', label: 'Quarterly' },
+      { value: 'a', label: 'Annual' },
+    ],
+    'Quarterly': [
+      { value: 'q', label: 'Quarterly' },
+      { value: 'a', label: 'Annual' },
+    ],
+    'Annual': [{ value: 'a', label: 'Annual' }],
+  };
+
+  const seriesFreq = info.frequency || 'Monthly';
+  const freqKey = Object.keys(freqMap).find(k => seriesFreq.startsWith(k)) || 'Monthly';
+  const opts = freqMap[freqKey] || freqMap['Monthly'];
+  freqSelect.innerHTML = opts.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+
+  // Default dates: last 10 years
+  const end = new Date();
+  const start = new Date();
+  start.setFullYear(start.getFullYear() - 10);
+  document.getElementById('startDate').value = start.toISOString().split('T')[0];
+  document.getElementById('endDate').value = end.toISOString().split('T')[0];
+
+  // Set observation start/end limits
+  document.getElementById('startDate').min = info.observation_start;
+  document.getElementById('startDate').max = info.observation_end;
+  document.getElementById('endDate').min = info.observation_start;
+  document.getElementById('endDate').max = info.observation_end;
+
+  document.getElementById('controls').style.display = 'flex';
+}
+
+async function updateChart() {
+  if (!currentSeries) return;
+  showState('loading');
+  await fetchAndRender();
+}
+
+async function fetchAndRender() {
+  const units = document.getElementById('unitsSelect').value;
+  const freq = document.getElementById('freqSelect').value;
+  const startDate = document.getElementById('startDate').value;
+  const endDate = document.getElementById('endDate').value;
+
+  try {
+    const url = `${FRED_BASE}/series/observations?series_id=${currentSeries}&api_key=${API_KEY}&file_type=json&units=${units}&frequency=${freq}&observation_start=${startDate}&observation_end=${endDate}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.observations || data.observations.length === 0) {
+      showState('error', 'No data available for the selected parameters.');
+      return;
+    }
+
+    allObservations = data.observations.filter(o => o.value !== '.' && o.value !== '');
+    if (allObservations.length === 0) {
+      showState('error', 'No valid data points for the selected range and frequency.');
+      return;
+    }
+
+    renderChart(allObservations);
+    showState('chart');
+  } catch(e) {
+    showState('error', 'Failed to fetch observations. Please try again.');
+    console.error(e);
+  }
+}
+
+function renderChart(observations) {
+  const info = currentSeriesInfo;
+  const labels = observations.map(o => o.date);
+  const values = observations.map(o => parseFloat(o.value));
+
+  // Update header info
+  document.getElementById('chartTitle').textContent = info.title;
+  const lastVal = values[values.length - 1];
+  document.getElementById('lastValue').textContent = formatValue(lastVal);
+  document.getElementById('lastValueLabel').textContent = `as of ${labels[labels.length-1]}`;
+  document.getElementById('metaUnits').textContent = getUnitsLabel();
+  document.getElementById('metaFreq').textContent = getFreqLabel();
+  document.getElementById('sourceNote').textContent = `Source: Federal Reserve Bank of St. Louis (FRED) · Series: ${currentSeries} · Retrieved ${new Date().toLocaleDateString()}`;
+
+  // Smart x-axis label thinning
+  const maxLabels = 12;
+  const step = Math.ceil(labels.length / maxLabels);
+  const tickLabels = labels.map((l, i) => (i % step === 0) ? l.substring(0, 7) : '');
+
+  const ctx = document.getElementById('myChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: info.title,
+        data: values,
+        borderColor: '#1e2d6b',
+        borderWidth: 2,
+        pointRadius: observations.length > 120 ? 0 : 2,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#1e2d6b',
+        fill: true,
+        backgroundColor: 'rgba(30,45,107,0.06)',
+        tension: 0.1,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#fff',
+          titleColor: '#1a1a2e',
+          bodyColor: '#1e2d6b',
+          borderColor: '#d0d5e8',
+          borderWidth: 1,
+          titleFont: { family: 'Arial', size: 12 },
+          bodyFont: { family: 'Arial', size: 13, weight: 'bold' },
+          callbacks: {
+            title: (items) => items[0].label,
+            label: (item) => `  ${formatValue(item.raw)} ${getUnitsShort()}`,
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            font: { family: 'Arial', size: 11 },
+            color: '#8e9ac2',
+            maxRotation: 0,
+            callback: function(val, index) {
+              return index % step === 0 ? labels[index].substring(0, 7) : '';
+            }
+          },
+          grid: { color: '#f0f2f8' },
+          border: { color: '#e0e4f0' }
+        },
+        y: {
+          ticks: {
+            font: { family: 'Arial', size: 11 },
+            color: '#8e9ac2',
+            callback: (val) => formatValue(val)
+          },
+          grid: { color: '#f0f2f8' },
+          border: { color: '#e0e4f0' }
+        }
+      }
+    }
+  });
+}
+
+function formatValue(v) {
+  if (Math.abs(v) >= 1e12) return (v/1e12).toFixed(2) + 'T';
+  if (Math.abs(v) >= 1e9) return (v/1e9).toFixed(2) + 'B';
+  if (Math.abs(v) >= 1e6) return (v/1e6).toFixed(2) + 'M';
+  if (Math.abs(v) >= 1000) return v.toLocaleString('en-US', {maximumFractionDigits: 1});
+  return v.toFixed(2);
+}
+
+function getUnitsLabel() {
+  const map = { lin:'Level', chg:'Change', ch1:'Change from Year Ago', pch:'% Change', pc1:'% Change from Year Ago', pca:'Compounded Annual Rate', cch:'Continuously Compounded Rate', cca:'Continuously Compounded Annual', log:'Natural Log' };
+  return map[document.getElementById('unitsSelect').value] || 'Level';
+}
+
+function getFreqLabel() {
+  const map = { d:'Daily', w:'Weekly', m:'Monthly', q:'Quarterly', a:'Annual' };
+  return map[document.getElementById('freqSelect').value] || '';
+}
+
+function getUnitsShort() {
+  const u = document.getElementById('unitsSelect').value;
+  if (['pch','pc1','pca','cch','cca'].includes(u)) return '%';
+  return '';
+}
+
+function showState(state, msg) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('errorState').style.display = 'none';
+  document.getElementById('chartContent').style.display = 'none';
+  if (state === 'loading') document.getElementById('loadingState').style.display = 'flex';
+  else if (state === 'error') { document.getElementById('errorState').style.display = 'flex'; document.getElementById('errorState').textContent = msg; }
+  else if (state === 'chart') document.getElementById('chartContent').style.display = 'block';
+  else document.getElementById('emptyState').style.display = 'flex';
+}
+
+async function exportPNG() {
+  if (!chartInstance) return;
+  const canvas = document.getElementById('myChart');
+  const link = document.createElement('a');
+  link.download = `${currentSeries}_chart.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+async function exportPDF() {
+  if (!chartInstance) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+
+  // White background
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, pw, ph, 'F');
+
+  // Dark blue header bar
+  doc.setFillColor(30, 45, 107);
+  doc.rect(0, 0, pw, 18, 'F');
+
+  // Title in header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Economic Data Chart', 12, 11.5);
+
+  // Logo in header top-right
+  if (logoDataUrl) {
+    const logoW = 28;
+    const logoH = 13;
+    doc.addImage(logoDataUrl, 'PNG', pw - logoW - 8, 2.5, logoW, logoH);
+  }
+
+  // Chart title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(26, 26, 46);
+  const title = currentSeriesInfo.title;
+  const titleLines = doc.splitTextToSize(title, pw - 24);
+  doc.text(titleLines, 12, 28);
+
+  // Last value
+  const vals = allObservations.map(o => parseFloat(o.value));
+  const lastVal = vals[vals.length - 1];
+  const lastDate = allObservations[allObservations.length - 1].date;
+  doc.setFontSize(22);
+  doc.setTextColor(30, 45, 107);
+  doc.text(formatValue(lastVal) + getUnitsShort(), 12, 42);
+  doc.setFontSize(9);
+  doc.setTextColor(107, 116, 148);
+  doc.text(`as of ${lastDate}`, 12, 48);
+
+  // Meta line
+  doc.setFontSize(8.5);
+  doc.setTextColor(142, 154, 194);
+  doc.text(`Units: ${getUnitsLabel()}   ·   Frequency: ${getFreqLabel()}   ·   Series: ${currentSeries}`, 12, 54);
+
+  // Chart image from canvas
+  const canvas = document.getElementById('myChart');
+  const chartImg = canvas.toDataURL('image/png', 1.0);
+  const chartY = 58;
+  const chartH = ph - chartY - 18;
+  doc.addImage(chartImg, 'PNG', 12, chartY, pw - 24, chartH);
+
+  // Footer
+  doc.setFontSize(7.5);
+  doc.setTextColor(176, 184, 212);
+  doc.text(`Source: Federal Reserve Bank of St. Louis (FRED) · Retrieved ${new Date().toLocaleDateString()}`, 12, ph - 6);
+  doc.text('Baird · For internal use only', pw - 12, ph - 6, { align: 'right' });
+
+  doc.save(`${currentSeries}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+</script>
+</body>
+</html>
