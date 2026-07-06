@@ -1,0 +1,2138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baird Economic Data Charts</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f5f6f8;
+    color: #1a1a2e;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #0A4E90;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+
+  header img { height: 44px; width: auto; }
+
+  header h1 { display: none; }  /* replaced by editable input */
+
+  #pdfTitle {
+    color: #fff;
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px dashed rgba(255,255,255,0.35);
+    outline: none;
+    font-family: Arial, Helvetica, sans-serif;
+    width: 340px;
+    max-width: 50vw;
+    padding: 2px 4px;
+    transition: border-color 0.2s;
+  }
+
+  #pdfTitle:focus {
+    border-bottom-color: rgba(255,255,255,0.9);
+  }
+
+  #pdfTitle::placeholder {
+    color: rgba(255,255,255,0.45);
+    font-weight: 400;
+  }
+
+  #teamName {
+    color: rgba(255,255,255,0.60);
+    font-size: 1.1rem;
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: 0.02em;
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px dashed rgba(255,255,255,0.25);
+    outline: none;
+    font-family: Arial, Helvetica, sans-serif;
+    width: 200px;
+    max-width: 25vw;
+    padding: 2px 4px;
+    transition: border-color 0.2s;
+    text-align: right;
+  }
+
+  #teamName:focus { border-bottom-color: rgba(255,255,255,0.7); }
+
+  #teamName::placeholder {
+    color: rgba(255,255,255,0.30);
+    font-style: italic;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 32px auto;
+    padding: 0 20px;
+  }
+
+  .search-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .search-bar input {
+    flex: 1;
+    padding: 11px 16px;
+    border: 1.5px solid #d0d5e8;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 0.97rem;
+    background: #fff;
+    color: #1a1a2e;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-bar input:focus { border-color: #0A4E90; }
+  .search-bar input::placeholder { color: #9098b0; }
+
+  button {
+    padding: 11px 22px;
+    background: #0A4E90;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s;
+    white-space: nowrap;
+  }
+
+  button:hover { background: #162155; }
+  button:disabled { background: #8e9ac2; cursor: not-allowed; }
+
+  button.secondary {
+    background: #fff;
+    color: #0A4E90;
+    border: 1.5px solid #0A4E90;
+  }
+
+  button.secondary:hover { background: #eef0f8; }
+  button.secondary.active { background: #0A4E90; color: #fff; }
+  button.secondary.active:hover { background: #162155; }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    align-items: flex-end;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .control-group label {
+    font-size: 0.70rem;
+    font-weight: 700;
+    color: #5a6380;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  select {
+    padding: 7px 28px 7px 10px;
+    border: 1.5px solid #d0d5e8;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 0.83rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%231e2d6b' d='M6 8L0 0h12z'/%3E%3C/svg%3E") no-repeat right 12px center;
+    background-size: 10px;
+    color: #1a1a2e;
+    appearance: none;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 140px;
+  }
+
+  select:focus { border-color: #0A4E90; }
+
+  /* Preset range buttons */
+  .range-presets {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .range-btn {
+    padding: 7px 10px;
+    background: #fff;
+    color: #0A4E90;
+    border: 1.5px solid #d0d5e8;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .range-btn:hover { background: #eef0f8; border-color: #0A4E90; }
+  .range-btn.active { background: #0A4E90; color: #fff; border-color: #0A4E90; }
+
+  .date-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  input[type="date"] {
+    padding: 7px 10px;
+    border: 1.5px solid #d0d5e8;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 0.83rem;
+    color: #1a1a2e;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #fff;
+  }
+
+  input[type="date"]:focus { border-color: #0A4E90; }
+
+  .chart-card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 20px rgba(30,45,107,0.10);
+    padding: 20px 28px 20px;
+    position: relative;
+    border: 1px solid #eceef6;
+  }
+
+  .chart-header { margin-bottom: 18px; overflow: hidden; }
+
+  .chart-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #6b7494;
+    margin-bottom: 10px;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    cursor: default;
+  }
+
+  .chart-meta {
+    display: flex;
+    gap: 0;
+    margin-top: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .meta-item {
+    font-size: 0.74rem;
+    color: #a0a8c4;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .meta-item + .meta-item::before {
+    content: '';
+    display: inline-block;
+    width: 1.5px;
+    height: 12px;
+    background: #d0d5e8;
+    margin: 0 12px;
+    vertical-align: middle;
+    border-radius: 1px;
+  }
+
+  .meta-item strong { color: #5a6494; font-weight: 600; }
+
+  .asof-pill {
+    background: #eef3fa;
+    color: #0A4E90;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  .series-id-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f0f4fa;
+    border: 1px solid #d0d5e8;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 0.70rem;
+    font-weight: 700;
+    color: #0A4E90;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+    font-family: Arial, sans-serif;
+  }
+
+  .series-id-badge:hover { background: #dce8f7; }
+
+  .copy-confirm {
+    font-size: 0.68rem;
+    color: #3b6d11;
+    background: #eaf3de;
+    padding: 2px 7px;
+    border-radius: 5px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+
+  .copy-confirm.visible { opacity: 1; }
+
+  .share-bar {
+    display: none;
+    margin-top: 10px;
+    padding: 9px 12px;
+    background: #f7f8fc;
+    border: 1px solid #e0e4f0;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    color: #5a6494;
+    font-family: monospace;
+    word-break: break-all;
+    position: relative;
+    padding-right: 60px;
+  }
+
+  .share-bar .copy-url-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #0A4E90;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+  }
+
+
+
+  .chart-divider {
+    border: none;
+    border-top: 1.5px solid rgba(10, 78, 144, 0.18);
+    margin: 14px 0 16px;
+  }
+
+  .yaxis-controls {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 14px; background: #f7f8fc;
+    border: 0.5px solid #e8eaf2; border-radius: 7px;
+    margin-bottom: 12px; flex-wrap: wrap;
+  }
+  .yaxis-controls label {
+    font-size: 0.70rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: #8e9ac2; white-space: nowrap;
+  }
+  .yaxis-input-group { display: flex; align-items: center; gap: 6px; }
+  .yaxis-input-group span { font-size: 0.72rem; color: #a0a8c4; font-weight: 600; }
+  .yaxis-input-group input[type="number"] {
+    width: 80px; padding: 5px 8px; border: 1.5px solid #d0d5e8;
+    border-radius: 5px; font-size: 0.80rem; font-family: Arial, sans-serif;
+    color: #1a1a2e; background: #fff; outline: none; text-align: center;
+    -moz-appearance: textfield;
+  }
+  .yaxis-input-group input[type="number"]::-webkit-inner-spin-button,
+  .yaxis-input-group input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .yaxis-input-group input[type="number"]:focus { border-color: #0A4E90; }
+  .yaxis-reset {
+    padding: 5px 10px; border: 1.5px solid #d0d5e8; border-radius: 5px;
+    font-size: 0.72rem; font-weight: 600; color: #8e9ac2; background: #fff;
+    cursor: pointer; font-family: Arial, sans-serif; transition: all 0.15s;
+  }
+  .yaxis-reset:hover { border-color: #0A4E90; color: #0A4E90; }
+  .yaxis-note { font-size: 0.68rem; color: #b0b8d4; font-style: italic; }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 400px;
+  }
+
+
+  .chart-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    justify-content: flex-end;
+  }
+
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    font-size: 0.95rem;
+    color: #8e9ac2;
+    gap: 12px;
+  }
+
+  .spinner {
+    width: 22px; height: 22px;
+    border: 3px solid #d0d5e8;
+    border-top-color: #0A4E90;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #c0392b;
+    font-size: 0.93rem;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 360px;
+    color: #b0b8d4;
+    gap: 14px;
+    text-align: center;
+  }
+
+  .empty-state svg { opacity: 0.35; }
+  .empty-state p { font-size: 0.95rem; max-width: 320px; line-height: 1.5; }
+
+  .last-value-bar {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 10px 0 4px;
+  }
+
+  .last-value {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: #0A4E90;
+    letter-spacing: -0.02em;
+  }
+
+  .last-value-unit { font-size: 0.85rem; color: #6b7494; }
+
+  .source-note {
+    font-size: 0.72rem;
+    color: #b0b8d4;
+    margin-top: 14px;
+    border-top: 1px solid #f0f2f8;
+    padding-top: 10px;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 0;
+    margin-top: 16px;
+    border: 0.5px solid #e8eaf2;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .stat-item {
+    flex: 1;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background: #fff;
+    border-right: 0.5px solid #e8eaf2;
+  }
+
+  .stat-item:last-child { border-right: none; }
+
+  .stat-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #a0a8c4;
+  }
+
+  .stat-value {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #0A4E90;
+    line-height: 1.1;
+  }
+
+  .stat-date {
+    font-size: 0.76rem;
+    color: #a0a8c4;
+    margin-top: 2px;
+  }
+
+  @media (max-width: 700px) {
+    .stats-bar { flex-wrap: wrap; }
+    .stat-item { flex: 1 1 45%; border-right: none; border-bottom: 0.5px solid #e8eaf2; }
+    .stat-item:last-child { border-bottom: none; }
+  }
+
+  @media (max-width: 700px) {
+    header { padding: 12px 16px; }
+    header h1 { font-size: 0.95rem; }
+    .container { padding: 0 12px; margin: 16px auto; }
+    .controls { gap: 8px; }
+    select { min-width: 130px; }
+    .chart-card { padding: 16px 14px 14px; }
+    .chart-wrap { height: 260px; }
+    .last-value { font-size: 1.5rem; }
+  }
+
+  .suggestion-box {
+    background: #fff;
+    border: 1.5px solid #d0d5e8;
+    border-radius: 6px;
+    margin-top: -18px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(30,45,107,0.10);
+    overflow: hidden;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .suggestion-item {
+    padding: 9px 16px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    border-bottom: 1px solid #f0f2f8;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover { background: #eef0f8; }
+  .suggestion-item .sid { font-size: 0.72rem; color: #8e9ac2; font-weight: 700; }
+
+  .popular-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .chip {
+    padding: 5px 13px;
+    background: #eef0f8;
+    border: 1px solid #d0d5e8;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #0A4E90;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .chip:hover { background: #0A4E90; color: #fff; border-color: #0A4E90; }
+
+  /* ── Help Modal ── */
+  #helpOverlay {
+    position: fixed; inset: 0; background: rgba(10,78,144,0.18);
+    backdrop-filter: blur(3px); z-index: 1000;
+    display: none; align-items: center; justify-content: center;
+  }
+
+  #helpModal {
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 8px 40px rgba(10,78,144,0.18);
+    padding: 36px 40px; max-width: 520px; width: 90%;
+    font-family: Arial, sans-serif; max-height: 85vh; overflow-y: auto;
+  }
+
+  #helpModal h2 { font-size: 1.2rem; font-weight: 800; color: #0A4E90; margin-bottom: 14px; }
+  #helpModal h3 { font-size: 0.88rem; font-weight: 700; color: #0A4E90; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+  #helpModal p, #helpModal li { font-size: 0.85rem; color: #6b7494; line-height: 1.65; }
+  #helpModal ul { padding-left: 18px; margin-top: 4px; }
+  #helpModal li { margin-bottom: 4px; }
+  #helpModal a { color: #0A4E90; }
+  #helpModal .close-help { display: block; margin-top: 24px; width: 100%; padding: 11px; background: #0A4E90; color: #fff; border: none; border-radius: 7px; font-family: Arial, sans-serif; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
+  #helpModal .close-help:hover { background: #162155; }
+
+  .help-btn { background: none; border: none; color: rgba(255,255,255,0.65); font-size: 1.1rem; font-weight: 400; cursor: pointer; padding: 0; font-family: Arial, sans-serif; }
+  .help-btn:hover { color: #fff; }
+
+  /* ── API Key Modal ── */
+  #apiKeyOverlay {
+    position: fixed; inset: 0; background: rgba(10,78,144,0.18);
+    backdrop-filter: blur(3px); z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  #apiKeyModal {
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 8px 40px rgba(10,78,144,0.18);
+    padding: 36px 40px; max-width: 440px; width: 90%;
+    font-family: Arial, sans-serif;
+  }
+
+  #apiKeyModal .modal-logo {
+    height: 44px; width: auto; margin-bottom: 20px; display: block;
+  }
+
+  #apiKeyModal h2 {
+    font-size: 1.3rem; font-weight: 800; color: #0A4E90;
+    margin-bottom: 8px;
+  }
+
+  #apiKeyModal p {
+    font-size: 0.88rem; color: #6b7494; line-height: 1.6;
+    margin-bottom: 20px;
+  }
+
+  #apiKeyModal a { color: #0A4E90; }
+
+  #apiKeyInput {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid #d0d5e8; border-radius: 7px;
+    font-family: Arial, sans-serif; font-size: 0.93rem;
+    color: #1a1a2e; outline: none; margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+
+  #apiKeyInput:focus { border-color: #0A4E90; }
+  #apiKeyInput::placeholder { color: #b0b8d4; }
+
+  #apiKeySubmit {
+    width: 100%; padding: 12px;
+    background: #0A4E90; color: #fff;
+    border: none; border-radius: 7px;
+    font-family: Arial, sans-serif; font-size: 0.95rem;
+    font-weight: 700; cursor: pointer;
+    transition: background 0.18s;
+  }
+
+  #apiKeySubmit:hover { background: #162155; }
+
+  #apiKeyError {
+    font-size: 0.80rem; color: #c0392b;
+    margin-top: 10px; display: none; text-align: center;
+  }
+
+  #apiKeyError.visible { display: block; }
+
+  .api-key-change {
+    font-size: 0.70rem; color: #a0a8c4; cursor: pointer;
+    text-decoration: underline; margin-left: 8px;
+  }
+
+  .api-key-change:hover { color: #0A4E90; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="baird-logo.png" alt="Baird" id="headerLogo">
+  <input type="text" id="pdfTitle" maxlength="80" placeholder="Type PDF title here…" value="Insert PDF Header Here">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <input type="text" id="teamName" maxlength="50" placeholder="Team Identifier Here" value="">
+    <span class="api-key-change" onclick="changeApiKey()" title="Change your FRED API key">API Key</span>
+    <button class="help-btn" onclick="showHelp()" title="Help">?</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="search-bar">
+    <input type="text" id="seriesInput" placeholder="Search FRED series (e.g. GDP, UNRATE, CPIAUCSL, FEDFUNDS…)" autocomplete="off">
+    <button onclick="loadSeries()" id="loadBtn">Load Chart</button>
+  </div>
+
+  <div id="suggestions" class="suggestion-box" style="display:none;"></div>
+
+  <div class="popular-chips">
+    <span class="chip" onclick="quickLoad('UNRATE')">Unemployment</span>
+    <span class="chip" onclick="quickLoad('PAYEMS')">Nonfarm Payrolls</span>
+    <span class="chip" onclick="quickLoad('CPIAUCSL')">CPI</span>
+    <span class="chip" onclick="quickLoad('CPILFESL')">Core CPI</span>
+    <span class="chip" onclick="quickLoad('T5YIE')">5-Yr Breakeven Inflation</span>
+    <span class="chip" onclick="quickLoad('DFF')">Federal Funds Rate</span>
+    <span class="chip" onclick="quickLoad('DGS10')">10-Yr Treasury Yield</span>
+    <span class="chip" onclick="quickLoad('MORTGAGE30US')">30-Yr Mortgage Rate</span>
+    <span class="chip" onclick="quickLoad('W875RX1')">Personal Income ex-Transfers</span>
+    <span class="chip" onclick="quickLoad('M2SL')">M2 Money Supply</span>
+    <span class="chip" onclick="quickLoad('SP500')">S&amp;P 500</span>
+    <span class="chip" onclick="quickLoad('ICSA')">Initial Jobless Claims</span>
+    <span class="chip" onclick="quickLoad('A191RL1Q225SBEA')">Real GDP Growth</span>
+    <span class="chip" onclick="quickLoad('UMCSENT')">Consumer Sentiment</span>
+    <span class="chip" onclick="quickLoad('T10Y2Y')">10Y–2Y Spread</span>
+    <span class="chip" onclick="quickLoad('PCEPILFE')">Core PCE Inflation</span>
+    <span class="chip" onclick="quickLoad('HOUST')">Housing Starts</span>
+  </div>
+
+  <div class="controls" id="controls" style="display:none;">
+    <div class="control-group">
+      <label>Units</label>
+      <select id="unitsSelect" onchange="updateChart()"></select>
+    </div>
+    <div class="control-group">
+      <label>Frequency</label>
+      <select id="freqSelect" onchange="updateChart()"></select>
+    </div>
+    <div class="control-group">
+      <label>Time Range</label>
+      <div class="range-presets">
+        <button class="range-btn" onclick="setRange(1)">1Y</button>
+        <button class="range-btn" onclick="setRange(3)">3Y</button>
+        <button class="range-btn active" onclick="setRange(5)">5Y</button>
+        <button class="range-btn" onclick="setRange(10)">10Y</button>
+        <button class="range-btn" onclick="setRange(25)">25Y</button>
+        <button class="range-btn" onclick="setRange('max')">Max</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <label>Start Date</label>
+      <input type="date" id="startDate" onchange="onDateChange()">
+    </div>
+    <div class="control-group">
+      <label>End Date</label>
+      <input type="date" id="endDate" onchange="onDateChange()">
+    </div>
+  </div>
+
+  <div class="chart-card" id="chartCard">
+    <div class="empty-state" id="emptyState">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <rect x="4" y="44" width="8" height="16" rx="2" fill="#0A4E90"/>
+        <rect x="16" y="30" width="8" height="30" rx="2" fill="#0A4E90"/>
+        <rect x="28" y="36" width="8" height="24" rx="2" fill="#0A4E90"/>
+        <rect x="40" y="18" width="8" height="42" rx="2" fill="#0A4E90"/>
+        <rect x="52" y="10" width="8" height="50" rx="2" fill="#0A4E90"/>
+      </svg>
+      <p>Search for a FRED series above or click a quick-load chip to get started.</p>
+    </div>
+
+    <div id="loadingState" class="loading" style="display:none;">
+      <div class="spinner"></div> Loading data…
+    </div>
+
+    <div id="errorState" class="error-msg" style="display:none;"></div>
+
+    <div id="chartContent" style="display:none;">
+      <div class="chart-header">
+        <div class="chart-title" id="chartTitle"></div>
+        <div class="last-value-bar">
+          <span class="last-value" id="lastValue"></span>
+        </div>
+        <div class="chart-meta">
+          <div class="meta-item">Units: <strong id="metaUnits"></strong></div>
+          <div class="meta-item">Frequency: <strong id="metaFreq"></strong></div>
+          <div class="meta-item"><span class="asof-pill" id="lastValueLabel"></span></div>
+          <div class="meta-item">
+            <span class="series-id-badge" id="seriesIdBadge" onclick="copySeriesId()" title="Click to copy series ID">
+              &#xe081; <span id="seriesIdText"></span>
+            </span>
+            <span class="copy-confirm" id="copyConfirm">Copied!</span>
+          </div>
+        </div>
+      </div>
+      <hr class="chart-divider">
+      <div class="yaxis-controls" id="yaxisControls" style="display:none;">
+        <label>Y-Axis Range</label>
+        <div class="yaxis-input-group">
+          <span>Min</span>
+          <input type="number" id="yMinInput" placeholder="Auto" step="any" oninput="applyYAxisRange()">
+          <span>Max</span>
+          <input type="number" id="yMaxInput" placeholder="Auto" step="any" oninput="applyYAxisRange()">
+          <button class="yaxis-reset" onclick="resetYAxis()">Reset</button>
+        </div>
+        <span class="yaxis-note" id="yaxisNote">Auto-scaled to data</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="myChart"></canvas>
+      </div>
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-item">
+          <span class="stat-label">Maximum</span>
+          <span class="stat-value" id="statMax">—</span>
+          <span class="stat-date" id="statMaxDate"></span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Minimum</span>
+          <span class="stat-value" id="statMin">—</span>
+          <span class="stat-date" id="statMinDate"></span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Average</span>
+          <span class="stat-value" id="statAvg">—</span>
+          <span class="stat-date" id="statAvgDate"></span>
+        </div>
+      </div>
+      <div class="chart-actions">
+        <button class="secondary active" id="typeBtnLine" onclick="setChartType('line')">Line</button>
+        <button class="secondary" id="typeBtnBar" onclick="setChartType('bar')">Bar</button>
+        <div style="width:1px;background:#e0e4f0;align-self:stretch;margin:0 4px;"></div>
+        <button class="secondary" onclick="toggleAvgLabel()" id="avgToggleBtn">Hide Avg. Line</button>
+        <button class="secondary" onclick="nudgeAvgLabel()" id="nudgeBtn">Move Avg. Label</button>
+        <button class="secondary" onclick="toggleShareBar()">Share Chart</button>
+        <button class="secondary" onclick="exportPDF()">Export PDF</button>
+      </div>
+      <div class="share-bar" id="shareBar">
+        <span id="shareUrl"></span>
+        <button class="copy-url-btn" onclick="copyShareUrl()">Copy</button>
+      </div>
+      <div class="source-note" id="sourceNote"></div>
+      <div id="aggNote" style="display:none; font-size:0.72rem; color:#a0a8c4; margin-top:4px;">* Values represent period averages — FRED aggregates higher-frequency data to the selected frequency using the arithmetic mean.</div>
+    </div>
+  </div>
+
+  <!-- Deck Builder -->
+  <div id="deckBuilder" style="margin-top:28px;border-top:1.5px solid #e8eaf2;padding-top:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:0.80rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#8e9ac2;display:flex;align-items:center;gap:8px;">
+        Presentation Deck
+        <span class="deck-count-badge" id="deckCountBadge">0 slides</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-export-deck" id="exportDeckBtn" onclick="exportDeck()" disabled>Export Deck (.pptx)</button>
+        <button class="btn-add-to-deck" onclick="addToDeck()">+ Add Current Chart</button>
+      </div>
+    </div>
+    <div class="slide-tray" id="slideTray">
+      <div class="deck-empty">Load a chart and click &#8220;Add to Deck&#8221; or &#8220;Add Current Chart&#8221; to start building</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// API key loaded from localStorage — set by user on first visit
+let API_KEY = localStorage.getItem('fredApiKey') || '';
+// Proxy handles CORS; user supplies their own API key
+// Note: Cloudflare Worker is restricted to rossmayfield24.github.io origin only
+const FRED_BASE = 'https://fred-proxy.jrossmayfield.workers.dev/fred';
+
+function fredUrl(path) {
+  return FRED_BASE + path;
+}
+
+// ── API Key Modal logic ───────────────────────────────────────────────────────
+function showApiKeyModal() {
+  document.getElementById('apiKeyOverlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('apiKeyInput').focus(), 100);
+}
+
+function hideApiKeyModal() {
+  document.getElementById('apiKeyOverlay').style.display = 'none';
+}
+
+function showHelp() { document.getElementById('helpOverlay').style.display = 'flex'; }
+function hideHelp() { document.getElementById('helpOverlay').style.display = 'none'; }
+
+async function submitApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key || key.length < 10) {
+    document.getElementById('apiKeyError').classList.add('visible');
+    return;
+  }
+  // Validate by making a lightweight test call
+  document.getElementById('apiKeySubmit').textContent = 'Validating…';
+  document.getElementById('apiKeySubmit').disabled = true;
+  try {
+    const testUrl = `https://fred-proxy.jrossmayfield.workers.dev/fred/series?series_id=UNRATE&api_key=${key}&file_type=json`;
+    const res = await fetch(testUrl);
+    const data = await res.json();
+    if (data.seriess && data.seriess.length > 0) {
+      API_KEY = key;
+      localStorage.setItem('fredApiKey', key);
+      hideApiKeyModal();
+    } else {
+      throw new Error('Invalid');
+    }
+  } catch(e) {
+    document.getElementById('apiKeyError').classList.add('visible');
+    document.getElementById('apiKeySubmit').textContent = 'Get Started';
+    document.getElementById('apiKeySubmit').disabled = false;
+  }
+}
+
+function changeApiKey() {
+  document.getElementById('apiKeyInput').value = API_KEY;
+  document.getElementById('apiKeyError').classList.remove('visible');
+  document.getElementById('apiKeySubmit').textContent = 'Get Started';
+  document.getElementById('apiKeySubmit').disabled = false;
+  showApiKeyModal();
+}
+
+// Show modal on load if no key stored
+window.addEventListener('load', () => {
+  if (!API_KEY) showApiKeyModal();
+});
+
+// Allow Enter key to submit
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('apiKeyInput');
+  if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') submitApiKey(); });
+});
+
+let currentSeries = null;
+let chartAvgValue = null;
+let chartYAxisLabel = '';
+let currentSeriesInfo = null;
+let chartInstance = null;
+let allObservations = [];
+let searchTimeout = null;
+let activeRangeYears = 5; // track active preset
+
+// NBER recession dates (peak, trough)
+const RECESSIONS = [
+  ['1945-02-01','1945-10-01'],
+  ['1948-11-01','1949-10-01'],
+  ['1953-07-01','1954-05-01'],
+  ['1957-08-01','1958-04-01'],
+  ['1960-04-01','1961-02-01'],
+  ['1969-12-01','1970-11-01'],
+  ['1973-11-01','1975-03-01'],
+  ['1980-01-01','1980-07-01'],
+  ['1981-07-01','1982-11-01'],
+  ['1990-07-01','1991-03-01'],
+  ['2001-03-01','2001-11-01'],
+  ['2007-12-01','2009-06-01'],
+  ['2020-02-01','2020-04-01'],
+];
+
+// Logo embedded as base64 — always available instantly, no async issues
+// Natural size: 1083x1083 px (square), so aspect = 1.0
+const LOGO_NATURAL_W = 480;
+const LOGO_NATURAL_H = 414;
+const logoDataUrl = 'data:image/png;base64,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';
+
+// Search suggestions
+document.getElementById('seriesInput').addEventListener('input', function() {
+  clearTimeout(searchTimeout);
+  const q = this.value.trim();
+  if (q.length < 2) { hideSuggestions(); return; }
+  searchTimeout = setTimeout(() => searchSeries(q), 350);
+});
+
+document.getElementById('seriesInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { hideSuggestions(); loadSeries(); }
+  if (e.key === 'Escape') hideSuggestions();
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.search-bar') && !e.target.closest('.suggestion-box')) hideSuggestions();
+});
+
+async function searchSeries(query) {
+  try {
+    const url = fredUrl(`/series/search?search_text=${encodeURIComponent(query)}&api_key=${API_KEY}&file_type=json&limit=6&order_by=popularity&sort_order=desc`);
+    const r = await fetch(url);
+    const d = await r.json();
+    if (!d.seriess || d.seriess.length === 0) { hideSuggestions(); return; }
+    showSuggestions(d.seriess);
+  } catch(e) { hideSuggestions(); }
+}
+
+function showSuggestions(series) {
+  const box = document.getElementById('suggestions');
+  box.innerHTML = series.map(s => `
+    <div class="suggestion-item" onclick="selectSeries('${s.id}','${escHtml(s.title)}')">
+      <span>${escHtml(s.title)}</span>
+      <span class="sid">${s.id} &nbsp;·&nbsp; ${s.frequency_short || s.frequency} &nbsp;·&nbsp; ${s.units_short || s.units}</span>
+    </div>
+  `).join('');
+  box.style.display = 'block';
+}
+
+function hideSuggestions() {
+  document.getElementById('suggestions').style.display = 'none';
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function selectSeries(id) {
+  document.getElementById('seriesInput').value = id;
+  hideSuggestions();
+  loadSeries(id);
+}
+
+function quickLoad(id) {
+  document.getElementById('seriesInput').value = id;
+  loadSeries(id);
+}
+
+function setRange(years) {
+  activeRangeYears = years;
+  // Update active button style
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  if (!currentSeriesInfo) return;
+
+  const end = new Date();
+  let start;
+  if (years === 'max') {
+    start = new Date(currentSeriesInfo.observation_start);
+  } else {
+    start = new Date();
+    start.setFullYear(start.getFullYear() - years);
+    // Clamp to series start
+    const seriesStart = new Date(currentSeriesInfo.observation_start);
+    if (start < seriesStart) start = seriesStart;
+  }
+
+  document.getElementById('startDate').value = start.toISOString().split('T')[0];
+  document.getElementById('endDate').value = end.toISOString().split('T')[0];
+  updateChart();
+}
+
+function onDateChange() {
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  updateChart();
+}
+
+
+
+
+function diagnoseFetchError(e, response) {
+  const status = response ? response.status : 0;
+  if (status === 400) return 'Invalid request — your API key may be incorrect. Click "API Key" in the header to update it.';
+  if (status === 403) return 'API key rejected by FRED. Please check your key is correct and active. Click "API Key" in the header to update it.';
+  if (status === 429) return 'You\'ve hit your daily FRED API limit (1,000 requests/day). This resets at midnight Eastern Time.';
+  if (status === 404) return 'Series not found. Please check the series ID and try again.';
+  if (status >= 500) return 'FRED\'s servers are experiencing issues. Please try again in a few minutes.';
+  return 'Failed to load data. Please check your internet connection and try again.';
+}
+
+async function loadSeries(overrideId) {
+  const id = (overrideId || document.getElementById('seriesInput').value).trim().toUpperCase();
+  if (!id) return;
+  currentSeries = id;
+  window.avgLabelPosIdx = 0;
+  window.avgLineVisible = true;
+  const _atb = document.getElementById('avgToggleBtn');
+  if (_atb) _atb.textContent = 'Hide Avg. Line';
+  const _yMin = document.getElementById('yMinInput'); if (_yMin) _yMin.value = '';
+  const _yMax = document.getElementById('yMaxInput'); if (_yMax) _yMax.value = '';
+  const _yn = document.getElementById('yaxisNote'); if (_yn) _yn.textContent = 'Auto-scaled to data';
+  showState('loading');
+
+  let infoRes;
+  try {
+    const infoUrl = fredUrl(`/series?series_id=${id}&api_key=${API_KEY}&file_type=json`);
+    infoRes = await fetch(infoUrl);
+    console.log('Series info response status:', infoRes.status, infoUrl);
+    const infoData = await infoRes.json();
+    if (!infoData.seriess || infoData.seriess.length === 0) {
+      showState('error', `Series "${id}" not found. Please check the ID and try again.`);
+      return;
+    }
+    currentSeriesInfo = infoData.seriess[0];
+    setupControls(currentSeriesInfo);
+    await fetchAndRender();
+  } catch(e) {
+    showState('error', diagnoseFetchError(e, infoRes));
+    console.error('Fetch error:', e);
+  }
+}
+
+function setupControls(info) {
+  const unitsSelect = document.getElementById('unitsSelect');
+  const unitsOptions = [
+    { value: 'lin', label: 'Level' },
+    { value: 'chg', label: 'Change' },
+    { value: 'ch1', label: 'Change from Year Ago' },
+    { value: 'pch', label: '% Change' },
+    { value: 'pc1', label: '% Change from Year Ago' },
+    { value: 'pca', label: 'Compounded Annual Rate of Change' },
+    { value: 'cch', label: 'Continuously Compounded Rate of Change' },
+    { value: 'cca', label: 'Continuously Compounded Annual Rate' },
+    { value: 'log', label: 'Natural Log' },
+  ];
+  unitsSelect.innerHTML = unitsOptions.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+  // Always default to 'lin' — fetch raw data exactly as FRED published it.
+  // Many FRED series (CPI, Sticky CPI, etc.) are ALREADY in % change form.
+  // Requesting pc1/pch on top of those double-transforms them → garbage values.
+  unitsSelect.value = 'lin';
+  // Update the 'Level' option label to show actual native units from FRED metadata
+  // so the dropdown itself reads correctly (e.g. "% Change from Year Ago, SA")
+  const linOption = unitsSelect.querySelector('option[value="lin"]');
+  if (linOption && info.units) linOption.textContent = info.units;
+
+  const freqSelect = document.getElementById('freqSelect');
+  const freqMap = {
+    'Daily':     [{ value: 'd', label: 'Daily' },{ value: 'w', label: 'Weekly' },{ value: 'm', label: 'Monthly' },{ value: 'q', label: 'Quarterly' },{ value: 'a', label: 'Annual' }],
+    'Weekly':    [{ value: 'w', label: 'Weekly' },{ value: 'm', label: 'Monthly' },{ value: 'q', label: 'Quarterly' },{ value: 'a', label: 'Annual' }],
+    'Monthly':   [{ value: 'm', label: 'Monthly' },{ value: 'q', label: 'Quarterly' },{ value: 'a', label: 'Annual' }],
+    'Quarterly': [{ value: 'q', label: 'Quarterly' },{ value: 'a', label: 'Annual' }],
+    'Annual':    [{ value: 'a', label: 'Annual' }],
+  };
+  const seriesFreq = info.frequency || 'Monthly';
+  const freqKey = Object.keys(freqMap).find(k => seriesFreq.startsWith(k)) || 'Monthly';
+  freqSelect.innerHTML = (freqMap[freqKey] || freqMap['Monthly']).map(o => `<option value="${o.value}">${o.label}</option>`).join('');
+
+  // Default to 5Y range
+  activeRangeYears = 5;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+  const btns = document.querySelectorAll('.range-btn');
+  btns.forEach(b => { if (b.textContent === '5Y') b.classList.add('active'); });
+
+  const end = new Date();
+  const start = new Date();
+  start.setFullYear(start.getFullYear() - 5);
+  const seriesStart = new Date(info.observation_start);
+  const effectiveStart = start < seriesStart ? seriesStart : start;
+
+  document.getElementById('startDate').value = effectiveStart.toISOString().split('T')[0];
+  document.getElementById('endDate').value = end.toISOString().split('T')[0];
+  document.getElementById('startDate').min = info.observation_start;
+  document.getElementById('startDate').max = info.observation_end;
+  document.getElementById('endDate').min = info.observation_start;
+  document.getElementById('endDate').max = info.observation_end;
+
+  document.getElementById('controls').style.display = 'flex';
+}
+
+async function updateChart() {
+  if (!currentSeries) return;
+  showState('loading');
+  await fetchAndRender();
+}
+
+async function fetchAndRender() {
+  const units     = document.getElementById('unitsSelect').value;
+  const freq      = document.getElementById('freqSelect').value;
+  const startDate = document.getElementById('startDate').value;
+  const endDate   = document.getElementById('endDate').value;
+
+  let res;
+  try {
+    const url = fredUrl(`/series/observations?series_id=${currentSeries}&api_key=${API_KEY}&file_type=json&units=${units}&frequency=${freq}&observation_start=${startDate}&observation_end=${endDate}`);
+    res  = await fetch(url);
+    const data = await res.json();
+
+    if (!data.observations || data.observations.length === 0) {
+      showState('error', 'No data available for the selected parameters.');
+      return;
+    }
+
+    allObservations = data.observations.filter(o => o.value !== '.' && o.value !== '');
+    if (allObservations.length === 0) {
+      showState('error', 'No valid data points for the selected range and frequency.');
+      return;
+    }
+
+    renderChart(allObservations);
+    showState('chart');
+  } catch(e) {
+    showState('error', diagnoseFetchError(e, res));
+    console.error(e);
+  }
+}
+
+// Build recession bands as Chart.js annotation-style boxes using a custom plugin
+function buildRecessionPlugin(labels, values) {
+  // We'll draw recession shading on the canvas using beforeDatasetsDraw
+  return {
+    id: 'recessionShading',
+    beforeDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!chartArea) return;
+      const xScale = scales.x;
+      const n = labels.length;
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(180,185,205,0.42)';
+
+      RECESSIONS.forEach(([peakStr, troughStr]) => {
+        const peak   = new Date(peakStr);
+        const trough = new Date(troughStr);
+
+        // Find indices of labels within this recession
+        let startIdx = -1, endIdx = -1;
+        for (let i = 0; i < n; i++) {
+          const d = new Date(labels[i]);
+          if (startIdx === -1 && d >= peak)   startIdx = i;
+          if (d <= trough) endIdx = i;
+        }
+        if (startIdx === -1 || endIdx === -1 || startIdx > endIdx) return;
+
+        const x1 = xScale.getPixelForValue(startIdx);
+        const x2 = xScale.getPixelForValue(endIdx);
+        ctx.fillRect(x1, chartArea.top, x2 - x1, chartArea.bottom - chartArea.top);
+      });
+
+      ctx.restore();
+    }
+  };
+}
+
+function renderChart(observations) {
+  const info   = currentSeriesInfo;
+  const labels = observations.map(o => o.date);
+  const values = observations.map(o => parseFloat(o.value));
+
+  document.getElementById('chartTitle').textContent = info.title;
+  document.getElementById('chartTitle').title = info.title;
+  // Update series ID badge
+  const badgeEl = document.getElementById('seriesIdText');
+  if (badgeEl) badgeEl.textContent = currentSeries;
+  const lastVal = values[values.length - 1];
+  document.getElementById('lastValue').textContent = formatValue(lastVal) + getUnitsShort();
+  const lastDateRaw = labels[labels.length - 1];
+  const lastDateNice = formatDateNice(lastDateRaw);
+  document.getElementById('lastValueLabel').textContent = `as of ${lastDateNice}`;
+  document.getElementById('metaUnits').textContent = getUnitsLabel();
+  document.getElementById('metaFreq').textContent  = getFreqLabel();
+  document.getElementById('sourceNote').textContent = `Source: Federal Reserve Bank of St. Louis (FRED) · Retrieved ${new Date().toLocaleDateString()}`;
+
+  // Show averaging disclaimer when selected freq is lower than native
+  {
+    const _fRank = { d:0, w:1, m:2, q:3, a:4 };
+    const _fKey  = { 'Daily':'d','Weekly':'w','Monthly':'m','Quarterly':'q','Annual':'a' };
+    const _nKey  = Object.keys(_fKey).find(k => (currentSeriesInfo.frequency||'').startsWith(k)) || 'Monthly';
+    const _nRank = _fRank[_fKey[_nKey]];
+    const _sRank = _fRank[document.getElementById('freqSelect').value] ?? 2;
+    const _noteEl = document.getElementById('aggNote');
+    if (_noteEl) _noteEl.style.display = _sRank > _nRank ? 'block' : 'none';
+  }
+
+  // ── Stats: max, min, average for the displayed window ──────────────────────
+  {
+    const unitsSuffix = getUnitsShort();
+    let maxVal = -Infinity, minVal = Infinity, sum = 0;
+    let maxDate = '', minDate = '';
+    for (let i = 0; i < values.length; i++) {
+      const v = values[i];
+      if (v > maxVal) { maxVal = v; maxDate = labels[i]; }
+      if (v < minVal) { minVal = v; minDate = labels[i]; }
+      sum += v;
+    }
+    const avgVal = sum / values.length;
+    document.getElementById('statMax').textContent    = formatValue(maxVal) + unitsSuffix;
+    document.getElementById('statMaxDate').textContent = formatDateNice(maxDate);
+    document.getElementById('statMin').textContent    = formatValue(minVal) + unitsSuffix;
+    document.getElementById('statMinDate').textContent = formatDateNice(minDate);
+    document.getElementById('statAvg').textContent    = formatValue(avgVal) + unitsSuffix;
+    document.getElementById('statAvgDate').textContent = `${formatDateNice(labels[0])} – ${formatDateNice(labels[labels.length - 1])}`;
+  }
+
+  // X-axis tick interval: 1Y=monthly, 3Y/5Y=yearly, 10Y=every 2yr, 25Y=every 5yr, Max=smart
+  let yearInterval;
+  if (activeRangeYears === 1) {
+    yearInterval = 0; // special: show months
+  } else if (activeRangeYears === 3 || activeRangeYears === 5) {
+    yearInterval = 1;
+  } else if (activeRangeYears === 10) {
+    yearInterval = 2;
+  } else if (activeRangeYears === 25) {
+    yearInterval = 5;
+  } else {
+    // Max: always 5-year intervals
+    yearInterval = 5;
+  }
+
+  let tickCallback;
+  if (yearInterval === 0) {
+    // 1Y: show one label per calendar month regardless of data frequency.
+    // For monthly data: every point. For weekly/daily: only when the month changes.
+    tickCallback = function(val, index) {
+      if (index === 0) return '';                      // skip first point (may be mid-month)
+      if (!labels[index]) return '';
+      const thisMonth = labels[index].substring(0, 7); // "YYYY-MM"
+      const prevMonth = labels[index - 1] ? labels[index - 1].substring(0, 7) : null;
+      return thisMonth !== prevMonth ? thisMonth : '';  // show only on month boundary
+    };
+  } else {
+    tickCallback = function(val, index) {
+      // Never label index 0 — it's wherever the data starts (often mid-year)
+      // and is not evenly spaced with the rest. Start counting from first full year.
+      if (index === 0) return '';
+      if (!labels[index]) return '';
+      const thisYear = parseInt(labels[index].substring(0, 4), 10);
+      const prevYear = labels[index - 1] ? parseInt(labels[index - 1].substring(0, 4), 10) : null;
+      const yearChanged = prevYear === null || thisYear !== prevYear;
+      if (yearChanged && thisYear % yearInterval === 0) return String(thisYear);
+      return '';
+    };
+  }
+
+  // Compute average for reference line — stored globally for PDF
+  chartAvgValue = values.reduce((a, b) => a + b, 0) / values.length;
+  const avgValue = chartAvgValue;
+
+  // Derive a short units label for the y-axis
+  const nativeUnits = (currentSeriesInfo && currentSeriesInfo.units) ? currentSeriesInfo.units : '';
+  function makeUnitsShortLabel(u) {
+    const l = u.toLowerCase();
+    if (l.includes('percent change from year'))    return '% chg. yr ago';
+    if (l.includes('percent change'))              return '% change';
+    if (l.includes('percent') || l.includes('%'))  return 'percent';
+    if (l.includes('billion') && l.includes('dollar')) return 'billions $';
+    if (l.includes('trillion'))                    return 'trillions $';
+    if (l.includes('million'))                     return 'millions';
+    if (l.includes('thousand'))                    return 'thousands';
+    if (l.includes('index'))                       return 'index';
+    if (l.includes('number'))                      return 'number';
+    if (l.includes('ratio'))                       return 'ratio';
+    // Fallback: take up to first comma or 18 chars
+    return u.split(',')[0].substring(0, 18);
+  }
+  chartYAxisLabel = makeUnitsShortLabel(nativeUnits);
+  const yAxisLabel = chartYAxisLabel;
+
+  const ctx = document.getElementById('myChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  const recPlugin = buildRecessionPlugin(labels, values);
+
+
+
+  // Plugin: zero line + avg reference line + draggable avg label
+  const overlaysPlugin = {
+    id: 'overlays',
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      if (!scales.y || !chartArea) return;
+      ctx.save();
+      ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+      ctx.clip();
+
+      // Zero line
+      const yZero = scales.y.getPixelForValue(0);
+      if (yZero >= chartArea.top && yZero <= chartArea.bottom - 3) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#c0c4d8';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([]);
+        ctx.moveTo(chartArea.left, yZero);
+        ctx.lineTo(chartArea.right, yZero);
+        ctx.stroke();
+      }
+
+      // Avg dashed line — only if visible
+      if (!window.avgLineVisible) { ctx.restore(); return; }
+      const yAvg = scales.y.getPixelForValue(avgValue);
+      if (yAvg >= chartArea.top && yAvg <= chartArea.bottom) {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(120,130,165,0.55)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 4]);
+        ctx.moveTo(chartArea.left, yAvg);
+        ctx.lineTo(chartArea.right, yAvg);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Avg label position
+        const labelText = 'Avg. ' + formatValue(avgValue) + getUnitsShort();
+        ctx.font = 'bold 13px Arial';
+        const tw = ctx.measureText(labelText).width;
+        const pad = 6;
+        const lh = 20; // label height
+
+        // Position from index: 0=25%, 1=42%, 2=58%, 3=75% of chart width
+        const positions = [0.01, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 0.99];
+        const posIdx = window.avgLabelPosIdx || 0;
+        const chartW2 = chartArea.right - chartArea.left;
+        let lx = chartArea.left + positions[posIdx] * chartW2;
+        lx = Math.min(Math.max(lx, chartArea.left + tw/2 + pad), chartArea.right - tw/2 - pad);
+        const ly = yAvg - 13;
+
+        // Draw label
+        ctx.fillStyle = 'rgba(100,112,155,0.90)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(labelText, lx, ly);
+
+
+      }
+      ctx.restore();
+    },
+  };
+
+
+
+  const cType = window.currentChartType || 'line';
+  // Render chart at 4× resolution so PDF export stays sharp at any zoom
+  Chart.defaults.devicePixelRatio = (window.devicePixelRatio || 1) * 4;
+  chartInstance = new Chart(ctx, {
+    type: cType,
+    plugins: [recPlugin, overlaysPlugin],
+    data: {
+      labels,
+      datasets: [{
+        label: info.title,
+        data: values,
+        borderColor: '#0A4E90',
+        borderWidth: cType === 'bar' ? 0 : 3.8,
+        pointRadius: 0,
+        pointHoverRadius: cType === 'bar' ? 0 : 5,
+        pointHitRadius: 10,
+        pointHoverBackgroundColor: '#0A4E90',
+        pointHoverBorderColor: '#fff',
+        pointHoverBorderWidth: 2,
+        borderRadius: cType === 'bar' ? 3 : 0,
+        fill: cType === 'line',
+        backgroundColor: cType === 'bar' ? 'rgba(10,78,144,0.78)' : (context) => {
+          const chart = context.chart;
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return 'rgba(30,45,107,0.04)';
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          gradient.addColorStop(0, 'rgba(30,45,107,0.10)');
+          gradient.addColorStop(1, 'rgba(30,45,107,0.00)');
+          return gradient;
+        },
+        tension: cType === 'bar' ? 0 : 0.1,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 500, easing: 'easeInOutQuart' },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0A4E90',
+          titleColor: 'rgba(255,255,255,0.65)',
+          bodyColor: '#ffffff',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          padding: { top: 8, bottom: 8, left: 12, right: 12 },
+          cornerRadius: 6,
+          displayColors: false,
+          titleFont: { family: 'Arial', size: 11 },
+          bodyFont: { family: 'Arial', size: 14, weight: 'bold' },
+          callbacks: {
+            title: (items) => items[0].label,
+            label: (item) => `${formatValue(item.raw)}${getUnitsShort()}`,
+          }
+        }
+      },
+      scales: {
+        x: {
+          offset: cType === 'bar',
+          ticks: {
+            font: { family: 'Arial', size: 13 },
+            color: '#a0a8c4',
+            maxRotation: 0,
+            autoSkip: false,
+            callback: tickCallback,
+          },
+          grid: { display: false },
+          border: { color: '#e8eaf2' }
+        },
+        y: {
+          beginAtZero: false,
+          ticks: {
+            font: { family: 'Arial', size: 13 },
+            color: '#a0a8c4',
+            callback: (val) => formatValue(val)
+          },
+          grid: {
+            display: true,
+            color: (ctx) => {
+              // Only draw on every other tick, very faint
+              return ctx.index % 2 === 0
+                ? 'rgba(200,205,220,0.18)'
+                : 'transparent';
+            },
+            lineWidth: 1,
+            drawTicks: false,
+          },
+          border: { color: '#e8eaf2', dash: [] },
+          title: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function applyYAxisRange() {
+  if (!chartInstance) return;
+  const minVal = document.getElementById('yMinInput').value;
+  const maxVal = document.getElementById('yMaxInput').value;
+  const hasMin = minVal !== '' && !isNaN(parseFloat(minVal));
+  const hasMax = maxVal !== '' && !isNaN(parseFloat(maxVal));
+  chartInstance.options.scales.y.min = hasMin ? parseFloat(minVal) : undefined;
+  chartInstance.options.scales.y.max = hasMax ? parseFloat(maxVal) : undefined;
+  chartInstance.update();
+  const noteEl = document.getElementById('yaxisNote');
+  if (noteEl) noteEl.textContent = (hasMin || hasMax) ? 'Custom range active' : 'Auto-scaled to data';
+}
+
+function resetYAxis() {
+  document.getElementById('yMinInput').value = '';
+  document.getElementById('yMaxInput').value = '';
+  if (chartInstance) {
+    chartInstance.options.scales.y.min = undefined;
+    chartInstance.options.scales.y.max = undefined;
+    chartInstance.update();
+  }
+  const noteEl = document.getElementById('yaxisNote');
+  if (noteEl) noteEl.textContent = 'Auto-scaled to data';
+}
+
+window.avgLineVisible = true;
+
+function toggleAvgLabel() {
+  window.avgLineVisible = !window.avgLineVisible;
+  const btn    = document.getElementById('avgToggleBtn');
+  const nudge  = document.getElementById('nudgeBtn');
+  btn.textContent       = window.avgLineVisible ? 'Hide Avg. Line' : 'Show Avg. Line';
+  if (nudge) nudge.style.display = window.avgLineVisible ? '' : 'none';
+  if (chartInstance) chartInstance.draw();
+}
+
+function nudgeAvgLabel() {
+  window.avgLabelPosIdx = ((window.avgLabelPosIdx || 0) + 1) % 11;
+  if (chartInstance) chartInstance.draw();
+}
+
+function copySeriesId() {
+  if (!currentSeries) return;
+  navigator.clipboard.writeText(currentSeries).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = currentSeries;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+  const el = document.getElementById('copyConfirm');
+  el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 1800);
+}
+
+// ── Feature 2: Share URL ─────────────────────────────────────
+function buildShareUrl() {
+  const base   = window.location.href.split('?')[0];
+  const freq   = document.getElementById('freqSelect').value;
+  const units  = document.getElementById('unitsSelect').value;
+  const start  = document.getElementById('startDate').value;
+  const end    = document.getElementById('endDate').value;
+  return `${base}?series=${currentSeries}&freq=${freq}&units=${units}&start=${start}&end=${end}&type=${window.currentChartType || 'line'}`;
+}
+
+function toggleShareBar() {
+  const bar = document.getElementById('shareBar');
+  if (bar.style.display === 'block') {
+    bar.style.display = 'none';
+  } else {
+    document.getElementById('shareUrl').textContent = buildShareUrl();
+    bar.style.display = 'block';
+  }
+}
+
+function copyShareUrl() {
+  const url = buildShareUrl();
+  navigator.clipboard.writeText(url).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+  const btn = document.querySelector('.copy-url-btn');
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 1800);
+}
+
+// ── Feature 3: Chart type toggle ─────────────────────────────
+window.currentChartType = 'line';
+
+function setChartType(type) {
+  window.currentChartType = type;
+  document.getElementById('typeBtnLine').classList.toggle('active', type === 'line');
+  document.getElementById('typeBtnBar').classList.toggle('active', type === 'bar');
+  if (!chartInstance || allObservations.length === 0) return;
+  // Update chart type in-place so Chart.js animates the transition
+  const ds = chartInstance.data.datasets[0];
+  chartInstance.config.type          = type;
+  chartInstance.options.scales.x.offset = (type === 'bar');
+  ds.borderWidth                     = type === 'bar' ? 0 : 3.8;
+  ds.borderRadius                    = type === 'bar' ? 3 : 0;
+  ds.pointHoverRadius                = type === 'bar' ? 0 : 5;
+  ds.fill                            = type === 'line';
+  ds.backgroundColor                 = type === 'bar' ? 'rgba(10,78,144,0.78)' : chartInstance._bgGradientFn || 'rgba(10,78,144,0.07)';
+  ds.tension                         = type === 'bar' ? 0 : 0.1;
+  chartInstance.options.animation    = { duration: 500, easing: 'easeInOutQuart' };
+  chartInstance.update();
+}
+
+// Read URL params on load and restore state
+function readUrlParams() {
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('series')) {
+    document.getElementById('seriesInput').value = p.get('series');
+    if (p.get('type') === 'bar') { window.currentChartType = 'bar'; }
+    loadSeries(p.get('series')).then(() => {
+      if (p.get('freq'))  { document.getElementById('freqSelect').value  = p.get('freq');  }
+      if (p.get('units')) { document.getElementById('unitsSelect').value = p.get('units'); }
+      if (p.get('start')) { document.getElementById('startDate').value   = p.get('start'); }
+      if (p.get('end'))   { document.getElementById('endDate').value     = p.get('end');   }
+      if (p.get('freq') || p.get('units') || p.get('start') || p.get('end')) updateChart();
+      if (p.get('type') === 'bar') {
+        document.getElementById('typeBtnLine').classList.remove('active');
+        document.getElementById('typeBtnBar').classList.add('active');
+      }
+    });
+  }
+}
+
+window.addEventListener('load', readUrlParams);
+
+function formatDateNice(iso) {
+  // "2026-05-01" → "May 2026", "2026-05" → "May 2026"
+  // Uses Intl.DateTimeFormat for guaranteed cross-browser/OS output
+  try {
+    const parts = iso.split('-');
+    const year  = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // 0-indexed for Date constructor
+    const fmt   = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
+    return fmt.format(new Date(year, month, 1));
+  } catch(e) { return iso; }
+}
+
+function formatValue(v) {
+  if (currentSeries === 'SP500') {
+    return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  // Only apply dollar formatting when viewing native (lin) units
+  const selectedUnits = document.getElementById('unitsSelect') ?
+    document.getElementById('unitsSelect').value : 'lin';
+  const isDollar = selectedUnits === 'lin' && currentSeriesInfo &&
+    (currentSeriesInfo.units || '').toLowerCase().includes('dollar');
+  if (isDollar) {
+    return '$' + Math.round(v).toLocaleString('en-US');
+  }
+  const pfx = '';
+  if (Math.abs(v) >= 1e12) return (v/1e12).toFixed(2) + 'T';
+  if (Math.abs(v) >= 1e9)  return (v/1e9).toFixed(2)  + 'B';
+  if (Math.abs(v) >= 1e6)  return (v/1e6).toFixed(2)  + 'M';
+  if (Math.abs(v) >= 1e3)  return (v/1e3).toFixed(v % 1000 === 0 ? 0 : 1) + 'K';
+  return v.toFixed(2);
+}
+
+function getUnitsLabel() {
+  const sel = document.getElementById('unitsSelect');
+  const selected = sel.value;
+  if (selected === 'lin') {
+    // Read the option text directly — it's been updated to native FRED units in setupControls
+    const linOpt = sel.querySelector('option[value="lin"]');
+    if (linOpt) return linOpt.textContent;
+    // Belt-and-suspenders fallback to metadata
+    if (currentSeriesInfo && currentSeriesInfo.units) return currentSeriesInfo.units;
+    return 'Level';
+  }
+  const map = { chg:'Change', ch1:'Change from Year Ago', pch:'% Change', pc1:'% Change from Year Ago', pca:'Compounded Annual Rate', cch:'Continuously Compounded Rate', cca:'Continuously Compounded Annual', log:'Natural Log' };
+  return map[selected] || selected;
+}
+
+function getFreqLabel() {
+  const map = { d:'Daily', w:'Weekly', m:'Monthly', q:'Quarterly', a:'Annual' };
+  return map[document.getElementById('freqSelect').value] || '';
+}
+
+function getUnitsShort() {
+  const u = document.getElementById('unitsSelect').value;
+  if (['pch','pc1','pca','cch','cca'].includes(u)) return '%';
+  // For native (lin), check if series units contain 'percent' to show % in tooltip
+  if (u === 'lin' && currentSeriesInfo && currentSeriesInfo.units) {
+    const native = currentSeriesInfo.units.toLowerCase();
+    if (native.includes('percent') || native.includes('%')) return '%';
+  }
+  return '';
+}
+
+function showState(state, msg) {
+  document.getElementById('emptyState').style.display    = 'none';
+  document.getElementById('loadingState').style.display  = 'none';
+  document.getElementById('errorState').style.display    = 'none';
+  document.getElementById('chartContent').style.display  = 'none';
+  const _yctrl = document.getElementById('yaxisControls'); if (_yctrl) _yctrl.style.display = 'none';
+  if      (state === 'loading') document.getElementById('loadingState').style.display = 'flex';
+  else if (state === 'error')   { document.getElementById('errorState').style.display = 'flex'; document.getElementById('errorState').textContent = msg; }
+  else if (state === 'chart')   { document.getElementById('chartContent').style.display = 'block'; const _yc = document.getElementById('yaxisControls'); if (_yc) _yc.style.display = 'flex'; const _adb = document.getElementById('addToDeckBtn'); if (_adb) _adb.disabled = false; }
+  else                          { document.getElementById('emptyState').style.display = 'flex'; const _adb2 = document.getElementById('addToDeckBtn'); if (_adb2) _adb2.disabled = true; }
+}
+
+
+// ── Deck Builder ─────────────────────────────────────────────────────────────
+let deckSlides = [];
+
+function addToDeck() {
+  if (!chartInstance || !currentSeriesInfo) {
+    alert('Please load a chart first.');
+    return;
+  }
+  const orig = document.getElementById('myChart');
+  const cssW = orig.clientWidth, cssH = orig.clientHeight;
+  const c = document.createElement('canvas');
+  c.width = cssW * 4; c.height = cssH * 4;
+  const cx = c.getContext('2d');
+  cx.scale(4, 4);
+  cx.fillStyle = '#ffffff';
+  cx.fillRect(0, 0, cssW, cssH);
+  cx.drawImage(orig, 0, 0, cssW, cssH);
+
+  deckSlides.push({
+    title:       document.getElementById('pdfTitle').value.trim() || 'Pulse of the Economy',
+    teamName:    document.getElementById('teamName').value.trim(),
+    seriesTitle: currentSeriesInfo.title,
+    lastValue:   document.getElementById('lastValue').textContent,
+    metaStr:     document.getElementById('metaUnits').textContent + '  |  ' +
+                 document.getElementById('metaFreq').textContent + '  |  ' +
+                 document.getElementById('lastValueLabel').textContent,
+    maxVal:      document.getElementById('statMax').textContent,
+    maxDate:     document.getElementById('statMaxDate').textContent,
+    minVal:      document.getElementById('statMin').textContent,
+    minDate:     document.getElementById('statMinDate').textContent,
+    avgVal:      document.getElementById('statAvg').textContent,
+    avgDate:     document.getElementById('statAvgDate').textContent,
+    chartImg:    c.toDataURL('image/png', 1.0),
+    chartAR:     cssW / cssH,
+  });
+  renderTray();
+}
+
+function renderTray() {
+  const tray = document.getElementById('slideTray');
+  const n = deckSlides.length;
+  document.getElementById('deckCountBadge').textContent = n + (n === 1 ? ' slide' : ' slides');
+  document.getElementById('exportDeckBtn').disabled = n === 0;
+  tray.innerHTML = '';
+  if (n === 0) {
+    tray.innerHTML = '<div class="deck-empty">Load a chart and click \u201cAdd to Deck\u201d to start building</div>';
+    return;
+  }
+  deckSlides.forEach((sl, i) => {
+    const el = document.createElement('div');
+    el.className = 'slide-thumb';
+    el.innerHTML =
+      '<div class="thumb-bar"></div>' +
+      '<div class="thumb-body">' +
+        '<div class="thumb-series" title="' + sl.seriesTitle + '">' + sl.seriesTitle + '</div>' +
+        '<div class="thumb-val">' + sl.lastValue + '</div>' +
+        '<div class="thumb-chart"><img src="' + sl.chartImg + '" style="width:100%;height:100%;object-fit:cover;"></div>' +
+      '</div>' +
+      '<button class="thumb-remove" onclick="removeFromDeck(' + i + ')">\u00d7</button>' +
+      '<div class="thumb-num">' + (i + 1) + '</div>';
+    tray.appendChild(el);
+  });
+}
+
+function removeFromDeck(idx) {
+  deckSlides.splice(idx, 1);
+  renderTray();
+}
+
+async function exportDeck() {
+  if (deckSlides.length === 0) { alert('Add at least one chart to the deck first.'); return; }
+  const btn = document.getElementById('exportDeckBtn');
+  btn.textContent = 'Building\u2026';
+  btn.disabled = true;
+  try {
+    if (typeof PptxGenJS === 'undefined') throw new Error('PptxGenJS not loaded');
+    const pptx = new PptxGenJS();
+    pptx.layout = 'LAYOUT_16x9';
+    const BLUE = '0A4E90', LGREY = 'a0a8c4', DGREY = '6b7494', WHITE = 'FFFFFF';
+
+    for (const sl of deckSlides) {
+      const s = pptx.addSlide();
+
+      // Slide: 10" x 5.63" (16:9)
+      const SW = 10.0, SH = 5.63;
+
+      // Header
+      const HDR = 0.65;
+      s.addShape(pptx.ShapeType.rect, { x:0, y:0, w:SW, h:HDR, fill:{ color:BLUE } });
+      s.addText(sl.title, { x:0.25, y:0, w:7.5, h:HDR, fontSize:22, bold:true, color:WHITE, fontFace:'Arial', valign:'middle' });
+      if (sl.teamName) {
+        s.addText(sl.teamName, { x:7.8, y:0, w:2.0, h:HDR, fontSize:11, italic:true, color:'AACCDD', fontFace:'Arial', valign:'middle', align:'right' });
+      }
+
+      // ── Chart: preserve exact aspect ratio ────────────────────────────────
+      // Chart canvas on screen is ~1050px wide x 400px tall = 2.625:1
+      // We never stretch — instead we calculate height from width and center.
+      const CHARTX  = 4.15;
+      const CHARTW  = SW - CHARTX - 0.15;    // 5.70"
+      const CHART_AR = 2.625;                 // aspect ratio from screen canvas
+      const CHART_H  = CHARTW / CHART_AR;    // 2.17" — correct height, no stretch
+
+      // Center chart vertically in the white area below header
+      // Logo sits at top-right (HDR+0.08 to HDR+0.71), so chart starts below logo
+      const CHART_Y = 2.25;  // vertically centered, below logo, above source line
+
+      s.addImage({ data: sl.chartImg, x: CHARTX, y: CHART_Y, w: CHARTW, h: CHART_H });
+
+      // ── Logo: top-right of white area ─────────────────────────────────────
+      if (typeof logoDataUrl !== 'undefined' && logoDataUrl) {
+        const lH = 0.55, lW = lH * (480/414);
+        s.addImage({ data:logoDataUrl, x:SW-lW-0.2, y:HDR+0.08, w:lW, h:lH });
+      }
+
+      // ── Left column ───────────────────────────────────────────────────────
+      const LX    = 0.25;
+      const COL1W = 3.65;
+      const TOP   = HDR + 0.16;
+
+      // Series title
+      s.addText(sl.seriesTitle, {
+        x:LX, y:TOP, w:COL1W, h:0.48,
+        fontSize:14, color:DGREY, fontFace:'Arial', valign:'top', wrap:true
+      });
+
+      // Hero value
+      s.addText(sl.lastValue, {
+        x:LX, y:TOP+0.52, w:COL1W, h:0.72,
+        fontSize:34, bold:true, color:BLUE, fontFace:'Arial', valign:'middle'
+      });
+
+      // Meta line
+      s.addText(sl.metaStr, {
+        x:LX, y:TOP+1.26, w:COL1W, h:0.22,
+        fontSize:8, color:LGREY, fontFace:'Arial'
+      });
+
+      // Stats panel
+      const statsTop = TOP + 1.54;
+      const statH    = 0.68;
+      const panelW   = COL1W - 0.1;
+
+      s.addShape(pptx.ShapeType.rect, {
+        x:LX, y:statsTop, w:panelW, h:statH*3,
+        fill:{ color:'FFFFFF' }, line:{ color:'E8EAF2', width:0.5 }
+      });
+      s.addShape(pptx.ShapeType.line, { x:LX+0.05, y:statsTop+statH,   w:panelW-0.1, h:0, line:{ color:'E8EAF2', width:0.5 } });
+      s.addShape(pptx.ShapeType.line, { x:LX+0.05, y:statsTop+statH*2, w:panelW-0.1, h:0, line:{ color:'E8EAF2', width:0.5 } });
+
+      [
+        { lbl:'MAXIMUM', val:sl.maxVal, dt:sl.maxDate },
+        { lbl:'MINIMUM', val:sl.minVal, dt:sl.minDate },
+        { lbl:'AVERAGE', val:sl.avgVal, dt:sl.avgDate },
+      ].forEach((st, i) => {
+        const sy = statsTop + i * statH;
+        s.addText(st.lbl, { x:LX+0.1, y:sy+0.06, w:panelW-0.15, h:0.14, fontSize:7,  bold:true, color:LGREY, fontFace:'Arial' });
+        s.addText(st.val, { x:LX+0.1, y:sy+0.21, w:panelW-0.15, h:0.28, fontSize:15, bold:true, color:BLUE,  fontFace:'Arial' });
+        s.addText(st.dt,  { x:LX+0.1, y:sy+0.50, w:panelW-0.15, h:0.14, fontSize:7,  color:LGREY, fontFace:'Arial' });
+      });
+
+      // Source
+      s.addText('Source: Federal Reserve Bank of St. Louis (FRED)', {
+        x:LX, y:5.45, w:COL1W, h:0.14,
+        fontSize:6.5, color:'C0C8D8', fontFace:'Arial', valign:'middle'
+      });
+    }
+    await pptx.writeFile({ fileName: 'Baird_Economic_Deck_' + new Date().toISOString().split('T')[0] + '.pptx' });
+  } catch(e) {
+    console.error('PPTX export error:', e);
+    alert('Export failed: ' + e.message);
+  }
+  btn.textContent = 'Export Deck (.pptx)';
+  btn.disabled = deckSlides.length === 0;
+}
+
+async function exportPDF() {
+  if (!chartInstance) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+
+  // White background
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, pw, ph, 'F');
+
+  // Blue header bar
+  const barH = 24;
+  doc.setFillColor(10, 78, 144);
+  doc.rect(0, 0, pw, barH, 'F');
+  const pdfTitleText = document.getElementById('pdfTitle').value.trim() || 'Economic Data Chart';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.setTextColor(255, 255, 255);
+  doc.text(pdfTitleText, 14, 16);
+
+  // Team name — italic, semi-transparent white, right-aligned in header
+  const teamNameText = document.getElementById('teamName').value.trim();
+  if (teamNameText) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.setGState(new doc.GState({ opacity: 0.60 }));
+    doc.text(teamNameText, pw - 14, 16, { align: 'right' });
+    doc.setGState(new doc.GState({ opacity: 1 }));
+  }
+
+  // Logo dims calculated here; drawn later once valueY is known
+  const logoMargin = 14;
+  const logoAspect = LOGO_NATURAL_W / LOGO_NATURAL_H;
+  const logoH      = 22;
+  const logoW      = logoH * logoAspect;
+
+  // Everything left-aligned at x=14 from here down
+  const leftX = 14;
+
+  // Series title — normal weight, grey, just below bar
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(13);
+  doc.setTextColor(107, 116, 148);
+  const titleLines = doc.splitTextToSize(currentSeriesInfo.title, pw * 0.62);
+  const titleY = barH + 10;
+  doc.text(titleLines, leftX, titleY);
+
+  // Large value — bold, Baird blue
+  const vals    = allObservations.map(o => parseFloat(o.value));
+  const lastVal = vals[vals.length - 1];
+  const lastDate = formatDateNice(allObservations[allObservations.length - 1].date);
+  const valueY  = titleY + (titleLines.length || 1) * 6.5 + 4;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(10, 78, 144);
+  doc.text(formatValue(lastVal) + getUnitsShort(), leftX, valueY);
+
+  // Units | Frequency | as of — all on one line, same x as everything else
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(142, 154, 194);
+  doc.text('Units: ' + getUnitsLabel() + '   |   Frequency: ' + getFreqLabel() + '   |   as of ' + lastDate, leftX, valueY + 6);
+
+  // Thin blue rule
+  doc.setDrawColor(10, 78, 144);
+  doc.setLineWidth(0.3);
+  doc.setGState(new doc.GState({ opacity: 0.20 }));
+  doc.line(leftX, valueY + 10, pw - leftX, valueY + 10);
+  doc.setGState(new doc.GState({ opacity: 1 }));
+
+  // Draw logo now — vertically centered between bar bottom and blue rule
+  // Zone: barH (24mm) to rule (valueY+10). Midpoint = (barH + valueY+10) / 2
+  {
+    const zoneTop    = barH;
+    const zoneBottom = valueY + 10;
+    const zoneMid    = (zoneTop + zoneBottom) / 2;
+    const lX         = pw - logoW - logoMargin;
+    const lY         = zoneMid - logoH / 2;
+    doc.addImage(logoDataUrl, 'PNG', lX, lY, logoW, logoH);
+  }
+
+  // Stats panel — taller boxes, value + bullet + date on same line
+  const statsY   = valueY + 14;
+  const boxH     = 20;                   // taller to fit three stacked lines comfortably
+  const unitsSfx = getUnitsShort();
+
+  const obsVals  = allObservations.map(o => parseFloat(o.value));
+  const obsDates = allObservations.map(o => o.date);
+  let sMax = -Infinity, sMin = Infinity, sSum = 0, sMaxDate = '', sMinDate = '';
+  for (let i = 0; i < obsVals.length; i++) {
+    if (obsVals[i] > sMax) { sMax = obsVals[i]; sMaxDate = obsDates[i]; }
+    if (obsVals[i] < sMin) { sMin = obsVals[i]; sMinDate = obsDates[i]; }
+    sSum += obsVals[i];
+  }
+  const sAvg = sSum / obsVals.length;
+  const statsData = [
+    { label: 'Maximum', value: formatValue(sMax) + unitsSfx, date: formatDateNice(sMaxDate) },
+    { label: 'Minimum', value: formatValue(sMin) + unitsSfx, date: formatDateNice(sMinDate) },
+    { label: 'Average', value: formatValue(sAvg) + unitsSfx, date: formatDateNice(obsDates[0]) + ' – ' + formatDateNice(obsDates[obsDates.length - 1]) },
+  ];
+
+  const panelX = leftX;
+  const panelW = pw - leftX * 2;
+  doc.setDrawColor(232, 234, 242);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(panelX, statsY, panelW, boxH, 2, 2, 'S');
+  statsData.forEach((stat, i) => {
+    const colW = panelW / 3;
+    const bx   = panelX + i * colW;
+    const by   = statsY;
+    if (i > 0) {
+      doc.setDrawColor(232, 234, 242);
+      doc.setLineWidth(0.4);
+      doc.line(bx, by + 1.5, bx, by + boxH - 1.5);
+    }
+    // Label
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(160, 168, 196);
+    doc.text(stat.label.toUpperCase(), bx + 5, by + 5.5);
+    // Value — large, bold, Baird blue
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(10, 78, 144);
+    doc.text(stat.value, bx + 5, by + 12.5);
+    // Date — smaller, light grey below value
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(160, 168, 196);
+    doc.text(stat.date, bx + 5, by + 17.5);
+  });
+
+  // Chart
+  const chartY    = statsY + boxH + 4;
+  const pdfChartW = pw - 24;
+  const pdfChartH = ph - chartY - 12;
+
+  const orig    = document.getElementById('myChart');
+  // orig.width/height = true backing pixels (CSS * devicePixelRatio * Chart DPR multiplier)
+  // We draw orig 1:1 into a same-sized canvas — zero upscaling or downscaling,
+  // maximum fidelity. jsPDF receives the full pixel count and places it in the
+  // PDF at the correct mm dimensions, so it renders at whatever DPI the viewer uses.
+  const nativeW = orig.width;
+  const nativeH = orig.height;
+  const cssW    = orig.clientWidth;
+  const cssH    = orig.clientHeight;
+  const c = document.createElement('canvas');
+  c.width  = nativeW;
+  c.height = nativeH;
+  const cCtx = c.getContext('2d');
+  cCtx.fillStyle = '#ffffff';
+  cCtx.fillRect(0, 0, nativeW, nativeH);
+  cCtx.drawImage(orig, 0, 0);  // pixel-perfect 1:1 copy of the full backing store
+  const chartImg = c.toDataURL('image/png', 1.0);
+
+  // Fit inside the PDF area preserving the canvas's own aspect ratio.
+  // jsPDF addImage: if we specify both w and h it squishes. So compute
+  // the largest box that fits pdfChartW × pdfChartH with the right ratio.
+  // Aspect ratio from native pixels; jsPDF maps these to mm correctly
+  const canvasAR  = nativeW / nativeH;
+  const pdfAR     = pdfChartW / pdfChartH;
+  let   imgW, imgH, imgX, imgY;
+  if (canvasAR > pdfAR) {
+    // Wider than PDF area — constrain by width
+    imgW = pdfChartW;
+    imgH = pdfChartW / canvasAR;
+    imgX = 12;
+    imgY = chartY + (pdfChartH - imgH) / 2;
+  } else {
+    // Taller than PDF area — constrain by height
+    imgH = pdfChartH;
+    imgW = pdfChartH * canvasAR;
+    imgX = 12 + (pdfChartW - imgW) / 2;
+    imgY = chartY;
+  }
+  doc.addImage(chartImg, 'PNG', imgX, imgY, imgW, imgH);
+
+  // Footer — source only
+  doc.setFontSize(7.5);
+  doc.setTextColor(176, 184, 212);
+  doc.text('Source: Federal Reserve Bank of St. Louis (FRED) \u00B7 Retrieved ' + new Date().toLocaleDateString(), 12, ph - 5);
+
+
+
+  doc.save(currentSeries + '_' + new Date().toISOString().split('T')[0] + '.pdf');
+}
+
+
+
+</script>
+
+<!-- API Key Modal -->
+<div id="apiKeyOverlay" style="display:none;position:fixed;inset:0;background:rgba(10,78,144,0.18);backdrop-filter:blur(3px);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(10,78,144,0.18);padding:36px 40px;max-width:440px;width:90%;font-family:Arial,sans-serif;">
+    <img src="baird-logo.png" style="height:44px;width:auto;margin-bottom:20px;display:block;" alt="Baird">
+    <h2 style="font-size:1.3rem;font-weight:800;color:#0A4E90;margin-bottom:8px;">Enter Your FRED API Key</h2>
+    <p style="font-size:0.88rem;color:#6b7494;line-height:1.6;margin-bottom:20px;">
+      This tool uses the Federal Reserve's FRED API to fetch economic data.
+      Each user needs a free API key. Here's how to get one:<br><br>
+      1. Create a free account at <a href="https://fred.stlouisfed.org" target="_blank" style="color:#0A4E90;">fred.stlouisfed.org</a><br>
+      2. Log in &rarr; <strong>My Account &rarr; API Keys</strong><br>
+      3. Click <strong>&ldquo;Request API Key&rdquo;</strong> &mdash; it&rsquo;s generated instantly<br><br>
+      The account and key are completely free and take about 2 minutes to set up.
+    </p>
+    <input type="text" id="apiKeyInput" placeholder="Paste your FRED API key here&hellip;" maxlength="64"
+      style="width:100%;padding:11px 14px;border:1.5px solid #d0d5e8;border-radius:7px;font-family:Arial,sans-serif;font-size:0.93rem;color:#1a1a2e;outline:none;margin-bottom:12px;display:block;">
+    <button onclick="submitApiKey()" id="apiKeySubmit"
+      style="width:100%;padding:12px;background:#0A4E90;color:#fff;border:none;border-radius:7px;font-family:Arial,sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;">
+      Get Started
+    </button>
+    <div id="apiKeyError" style="font-size:0.80rem;color:#c0392b;margin-top:10px;display:none;text-align:center;">
+      Invalid key &mdash; please check and try again.
+    </div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div id="helpOverlay" style="display:none;position:fixed;inset:0;background:rgba(10,78,144,0.18);backdrop-filter:blur(3px);z-index:1000;align-items:center;justify-content:center;" onclick="if(event.target===this)hideHelp()">
+  <div id="helpModal" style="background:#fff;border-radius:14px;box-shadow:0 8px 40px rgba(10,78,144,0.18);padding:36px 40px;max-width:520px;width:90%;font-family:Arial,sans-serif;max-height:85vh;overflow-y:auto;">
+    <h2 style="font-size:1.2rem;font-weight:800;color:#0A4E90;margin-bottom:14px;">How to Use This Tool</h2>
+    <h3 style="font-size:0.88rem;font-weight:700;color:#0A4E90;margin:16px 0 6px;text-transform:uppercase;letter-spacing:0.06em;">What is this?</h3>
+    <p style="font-size:0.85rem;color:#6b7494;line-height:1.65;">This tool lets you search, visualize, and export economic data from FRED &mdash; the Federal Reserve Bank of St. Louis&rsquo;s database of 800,000+ economic time series.</p>
+    <h3 style="font-size:0.88rem;font-weight:700;color:#0A4E90;margin:16px 0 6px;text-transform:uppercase;letter-spacing:0.06em;">Getting started</h3>
+    <ul style="font-size:0.85rem;color:#6b7494;line-height:1.65;padding-left:18px;">
+      <li>Type a series name or ID in the search bar (e.g. &ldquo;unemployment&rdquo; or &ldquo;UNRATE&rdquo;)</li>
+      <li>Or click any of the pre-loaded chips below the search bar</li>
+      <li>Use the controls to adjust units, frequency, and time range</li>
+    </ul>
+    <h3 style="font-size:0.88rem;font-weight:700;color:#0A4E90;margin:16px 0 6px;text-transform:uppercase;letter-spacing:0.06em;">Controls explained</h3>
+    <ul style="font-size:0.85rem;color:#6b7494;line-height:1.65;padding-left:18px;">
+      <li><strong>Units</strong> &mdash; how the data is expressed (level, % change, etc.)</li>
+      <li><strong>Frequency</strong> &mdash; how often data points appear (monthly, quarterly, etc.)</li>
+      <li><strong>Time Range</strong> &mdash; preset buttons (1Y, 3Y, 5Y&hellip;) or custom start/end dates</li>
+      <li><strong>Y-Axis Range</strong> &mdash; manually set min/max to zoom in on a specific range</li>
+      <li><strong>Line / Bar</strong> &mdash; switch between chart types</li>
+    </ul>
+    <h3 style="font-size:0.88rem;font-weight:700;color:#0A4E90;margin:16px 0 6px;text-transform:uppercase;letter-spacing:0.06em;">Exporting</h3>
+    <ul style="font-size:0.85rem;color:#6b7494;line-height:1.65;padding-left:18px;">
+      <li><strong>Export PDF</strong> &mdash; downloads a formatted PDF with the Baird logo, chart, and stats</li>
+      <li><strong>Add to Deck</strong> &mdash; adds the current chart as a slide to a PowerPoint deck</li>
+      <li><strong>Export Deck (.pptx)</strong> &mdash; downloads all slides as a PowerPoint file</li>
+      <li>Type a custom title in the blue header bar before exporting</li>
+      <li>Add your team name in the field on the right of the header</li>
+    </ul>
+    <h3 style="font-size:0.88rem;font-weight:700;color:#0A4E90;margin:16px 0 6px;text-transform:uppercase;letter-spacing:0.06em;">Other features</h3>
+    <ul style="font-size:0.85rem;color:#6b7494;line-height:1.65;padding-left:18px;">
+      <li><strong>Share Chart</strong> &mdash; generates a URL that opens this exact chart view</li>
+      <li><strong>Hide Avg. Line</strong> &mdash; toggle the dashed average reference line</li>
+      <li><strong>Move Avg. Label</strong> &mdash; cycles the label through positions to avoid overlap</li>
+      <li><strong>Series ID badge</strong> &mdash; click it in the meta line to copy the series ID</li>
+    </ul>
+    <h3 style="font-size:0.88rem;font-weight:700;color:#0A4E90;margin:16px 0 6px;text-transform:uppercase;letter-spacing:0.06em;">About FRED</h3>
+    <p style="font-size:0.85rem;color:#6b7494;line-height:1.65;">FRED is maintained by the Federal Reserve Bank of St. Louis and is free to use. Each user needs their own free API key &mdash; <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" style="color:#0A4E90;">get one here</a>.</p>
+    <button onclick="hideHelp()" style="display:block;margin-top:24px;width:100%;padding:11px;background:#0A4E90;color:#fff;border:none;border-radius:7px;font-family:Arial,sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;">Got it</button>
+  </div>
+</div>
+
+</body>
+</html>
